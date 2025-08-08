@@ -11,7 +11,6 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { v4 as uuidv4 } from 'uuid';
-import { TaskState } from '@domain';
 
 @Component({
   selector: 'nl-task-controls',
@@ -23,6 +22,7 @@ export class TaskControlsComponent implements OnInit {
   private engine = inject(TaskEngineService);
 
   // form state
+  tasks: Task[] = [];
   taskName = '';
   taskDuration: number | null = 2000;
   taskStartAtDate: Date = new Date();
@@ -41,8 +41,9 @@ export class TaskControlsComponent implements OnInit {
 
   ngOnInit(): void {
     this.engine.getTasks().subscribe(tasks => {
+      this.tasks = tasks;
       this.taskOptions = tasks.filter(
-        t => t.state !== 'cancelled' && t.id !== this.newTaskId
+        t => t.state !== TaskStatus.CANCELLED
       );
     });
   }
@@ -58,11 +59,11 @@ export class TaskControlsComponent implements OnInit {
       const byId = new Map(all.map(t => [t.id, t] as const));
       const deps: Task[] = this.selectedDeps
         .map(id => byId.get(id))
-        .filter((t): t is Task => !!t && t.state !== 'cancelled');
+        .filter((t): t is Task => !!t && t.state !== TaskStatus.CANCELLED);
 
       this.engine.addTask({
         title: this.taskName.trim(),
-        id: this.newTaskId,
+        id: `t${this.tasks.length + 1}`,
         duration: this.taskDuration!,
         startAt: this.taskStartAtDate ?? new Date(),
         priority: this.taskPriority,

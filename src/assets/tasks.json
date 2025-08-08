@@ -84,7 +84,7 @@
     "title": "Publicar documentación",
     "completed": true,
     "dependencies": [],
-    "priority": 2,
+    "priority": 1,
     "duration": 1800,
     "startAt": "2025-08-08T07:50:00.000Z",
     "state": "pending",
@@ -98,7 +98,7 @@
     "priority": 1,
     "duration": 2200,
     "startAt": "2025-08-08T07:40:00.000Z",
-    "state": "failed",
+    "state": "pending",
     "retries": 2
   },
   {
@@ -106,10 +106,10 @@
     "title": "Optimizar consultas a base de datos",
     "completed": false,
     "dependencies": [],
-    "priority": 2,
+    "priority": 1,
     "duration": 4000,
     "startAt": "2025-08-08T07:30:00.000Z",
-    "state": "blocked",
+    "state": "failed",
     "retries": 2
   },
   {
@@ -117,7 +117,7 @@
     "title": "Limpieza de recursos temporales",
     "completed": false,
     "dependencies": [],
-    "priority": 3,
+    "priority": 1,
     "duration": 1200,
     "startAt": "2025-08-08T07:20:00.000Z",
     "state": "cancelled",

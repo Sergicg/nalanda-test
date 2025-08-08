@@ -1,3 +1,5 @@
+import { TaskStatus } from "../enums";
+
 export type Task = {
     id: string;
     title: string;    
@@ -6,7 +8,7 @@ export type Task = {
     priority: TaskPriority
     duration: number;
     startAt: Date | undefined;
-    state: TaskState;
+    state: TaskStatus;
     retries: number;
 }
 
@@ -16,11 +18,3 @@ export type TaskPriority =
     | 3
     | 4
     | 5;
-
-export type TaskState = 
-    | 'blocked' 
-    | 'completed' 
-    | 'cancelled' 
-    | 'failed' 
-    | 'pending' 
-    | 'in-progress';

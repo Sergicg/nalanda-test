@@ -1,7 +1,7 @@
 // src/app/services/task-engine.service.ts
 import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of, timer, throwError, EMPTY } from 'rxjs';
-import { catchError, finalize, map, mergeMap, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, timer, throwError, EMPTY, asapScheduler } from 'rxjs';
+import { catchError, finalize, map, mergeMap, observeOn, tap } from 'rxjs/operators';
 import { Task, TaskStatus } from '@domain';
 import { AlertsService } from '../alerts/alerts.service';
 
@@ -11,23 +11,23 @@ export class TaskEngineService {
   private alerts = inject(AlertsService);
 
   private tasks$ = new BehaviorSubject<Task[]>([]);
-  private alerts$ = new BehaviorSubject<string[]>([]);
 
   // Control de ejecución
   private activeTasks = new Set<string>();
   private readonly maxConcurrency = 3;  
 
+  private lastInactivityAt = 0;
+  private lastHighPriAt = 0;
+  private readonly ALERT_COOLDOWN_MS = 2000;
+  private readonly MAX_PRIORIZED_TASKS = 5;
+
   getTasks(): Observable<Task[]> { 
-    return this.tasks$.asObservable(); 
+    return this.tasks$.asObservable().pipe(observeOn(asapScheduler)); 
   }
-  
-  getAlerts(): Observable<string[]> { 
-    return this.alerts$.asObservable(); 
-  }  
 
   addTask(task: Task): void {
-    const merged: Task = { ...task };
-    this.tasks$.next([...this.tasks$.value, merged]);
+    const next = [...this.tasks$.value, { ...task }];
+    this.emitTasks(next);
   }
 
   updateTask(updated: Task): void {
@@ -40,11 +40,11 @@ export class TaskEngineService {
   }
 
   cancelTask(taskId: string): void {
-    const cur = this.getById(taskId);
-    if (!cur) return;
-    if (cur.state === 'pending' || cur.state === 'in-progress') {
-      this.updateTask({ ...cur, state: 'cancelled' });
-      this.alerts.error(`Falló ${cur.title}`, `Sin más reintentos`, cur.id);
+    const currentTask = this.getById(taskId);
+    if (!currentTask) return;
+    if (currentTask.state === 'pending' || currentTask.state === 'in-progress') {
+      this.updateTask({ ...currentTask, state: TaskStatus.CANCELLED });
+      this.alerts.error(`Falló ${currentTask.title}`, `Sin más reintentos`, currentTask.id);
     }
   }
 
@@ -58,24 +58,24 @@ export class TaskEngineService {
   }
 
   retryTask(taskId: string): void {
-    const cur = this.getById(taskId);
-    if (!cur) return;
-    if (cur.state === 'failed') {
-      const nextRetries = (cur.retries ?? 0) + 1;
+    const currentTask = this.getById(taskId);
+    if (!currentTask) return;
+    if (currentTask.state === TaskStatus.FAILED) {
+      const nextRetries = 1;
       if (nextRetries <= 2) {
-        this.updateTask({ ...cur, retries: nextRetries, state: TaskStatus.PENDING });
-        this.alerts.info(`Reintentando ${cur.title}`, `Intento ${nextRetries}/3`, cur.id);
+        this.updateTask({ ...currentTask, retries: nextRetries, state: TaskStatus.PENDING });
+        this.alerts.info(`Reintentando ${currentTask.title}`, `Intento ${nextRetries}/3`, currentTask.id);
       } else {
-        this.updateTask({ ...cur, state: 'failed' });
-        this.alerts.error(`Falló ${cur.title}`, `Sin más reintentos`, cur.id);
+        this.updateTask({ ...currentTask, state: TaskStatus.FAILED });
+        this.alerts.error(`Falló ${currentTask.title}`, `Sin más reintentos`, currentTask.id);
       }
     }
   }
 
   updateCreateAt(task: Task): void {
-    const cur = this.getById(task.id);
-    if (!cur) return;
-    this.updateTask({ ...cur, startAt: task.startAt });
+    const currentTask = this.getById(task.id);
+    if (!currentTask) return;
+    this.updateTask({ ...currentTask, startAt: task.startAt, state: TaskStatus.PENDING });
   }
 
   // ------- Info de capacidad para el Scheduler -------
@@ -85,114 +85,146 @@ export class TaskEngineService {
 
   tryExecute(taskId: string): Observable<void> {
     const initialTask = this.getById(taskId);
-
-    // Condiciones iniciales: tarea válida, pendiente y hay capacidad
     const isRunnable =
-      initialTask &&
-      initialTask.state === TaskStatus.PENDING &&
-      this.hasCapacity();
+      !!initialTask && initialTask.state === TaskStatus.PENDING && this.hasCapacity();
 
-    if (!isRunnable) {
-      return of(void 0);
+    if (!isRunnable) return of(void 0);
+
+    // Reservar slot y marcar IN_PROGRESS
+    this.activeTasks.add(taskId);
+    this.updateTask({ ...initialTask!, state: TaskStatus.IN_PROGRESS });
+
+    // Watchdog de bloqueo: si supera 2×duration -> BLOCKED + alerta
+    const blockTimerId = this.checkBlockTaskByDurationTimer(initialTask!);
+
+    // Simulación de ejecución real
+    return timer(initialTask!.duration).pipe(
+      // Resultado (70% éxito / 30% error simulado)
+      mergeMap(() => {
+        const currentTask = this.getById(taskId);
+        if (!currentTask) return EMPTY;
+
+        if (this.isTaskCancelled(currentTask)) {
+          this.alerts.info(`Tarea ${currentTask.title} cancelada`, undefined, currentTask.id);
+          return EMPTY;
+        }
+
+        const success = Math.random() < 0.7;
+        return success ? of(null) : throwError(() => new Error('Random failure'));
+      }),
+
+      // Éxito
+      tap(() => {
+        const currentTask = this.getById(taskId);
+        if (!currentTask) return;
+        if (this.isTaskCancelled(currentTask)) {
+          this.alerts.info(`Tarea ${currentTask.title} cancelada`, undefined, currentTask.id);
+          return;
+        }
+        this.updateTask({ ...currentTask, state: TaskStatus.COMPLETED, completed: true });
+        this.alerts.success(`Completada ${currentTask.title}`, undefined, currentTask.id);
+      }),
+
+      // Fallo + reintentos
+      catchError(() => {
+        const currentTask = this.getById(taskId);
+        if (!currentTask) return of(void 0);
+
+        if (this.isTaskCancelled(currentTask)) {
+          this.alerts.info(`Tarea ${currentTask.title} cancelada`, undefined, currentTask.id);
+          return of(void 0);
+        }
+
+        const retryCount = (currentTask.retries ?? 0) + 1;
+        if (retryCount <= 2) {
+          this.updateTask({ ...currentTask, retries: retryCount, state: TaskStatus.PENDING });
+          this.alerts.info(
+            `Reintentando ${currentTask.title}`,
+            `Intento ${retryCount}/3`,
+            currentTask.id
+          );
+        } else {
+          this.updateTask({ ...currentTask, state: TaskStatus.FAILED });
+          this.alerts.error(`Falló ${currentTask.title}`, `Sin más reintentos`, currentTask.id);
+        }
+        return of(void 0);
+      }),
+
+      // Liberar recursos y notificar cambios al terminar SIEMPRE
+      finalize(() => {
+        clearTimeout(blockTimerId);
+        this.activeTasks.delete(taskId);
+        // Re-emitimos el array (misma referencia clonada) para disparar evaluaciones y UI
+        this.emitTasks([...this.tasks$.value]);
+      }),
+
+      map(() => void 0)
+    );
+  }
+  
+  private emitTasks(next: Task[]) {
+    this.tasks$.next(next);
+    this.evaluateSystemAlerts();
+  }
+
+  private evaluateSystemAlerts() {
+    const tasks = this.tasks$.value;
+    const now = Date.now();
+
+    const maxTaskPrioritzedPending = tasks.filter(t => t.state === TaskStatus.PENDING && t.priority === 1).length;
+    if (maxTaskPrioritzedPending >= this.MAX_PRIORIZED_TASKS && now - this.lastHighPriAt > this.ALERT_COOLDOWN_MS) {
+      this.alerts.warn(
+        'Demasiadas tareas de prioridad alta pendientes',
+        `Hay ${maxTaskPrioritzedPending} tareas P1 en cola`
+      );
+      this.lastHighPriAt = now;
     }
 
-  // Reservar slot y marcar como en progreso
-  this.activeTasks.add(taskId);
-  this.updateTask({ ...initialTask, state: TaskStatus.IN_PROGRESS });
+    const running = tasks.some(t => t.state === TaskStatus.IN_PROGRESS);
+    const readyNow = tasks.some(
+      t =>
+        t.state === TaskStatus.PENDING &&
+        this.dependenciesMet(t, tasks) &&
+        (!t.startAt || t.startAt <= new Date())
+    );
 
-  const blockTimerId = this.checkBlockTaskByDurationTimer(initialTask);
+    if (!running && !readyNow && now - this.lastInactivityAt > this.ALERT_COOLDOWN_MS) {
+      this.alerts.info('Sistema inactivo');
+      this.lastInactivityAt = now;
+    }
+  }
 
-  // Helpers
-  const getCurrentTask = () => this.getById(taskId);
-  const isTaskCancelled = (task?: Task) => task?.state === TaskStatus.CANCELLED;
-  const showCancelledInfo = (task: Task) => this.alerts.info(`Tarea ${task.title} cancelada`, undefined, task.id);
-
-  return timer(initialTask.duration).pipe(
-    // Simulación de ejecución
-    mergeMap(() => {
-      const currentTask = getCurrentTask();
-      if (!currentTask) return EMPTY;
-      if (isTaskCancelled(currentTask)) {
-        showCancelledInfo(currentTask);
-        return EMPTY;
-      }
-
-      const executionSucceeded = Math.random() < 0.7;
-      return executionSucceeded
-        ? of(null)
-        : throwError(() => new Error('Random failure'));
-    }),
-
-    // Éxito
-    tap(() => {
-      const currentTask = getCurrentTask();
-      if (!currentTask) return;
-      if (isTaskCancelled(currentTask)) {
-        showCancelledInfo(currentTask);
-        return;
-      }
-
-      this.updateTask({
-        ...currentTask,
-        state: TaskStatus.COMPLETED,
-        completed: true
-      });      
-
-      this.alerts.success(`Completada ${currentTask.title}`, undefined, currentTask.id);
-    }),
-
-    // Error y reintentos
-    catchError(() => {
-      const currentTask = getCurrentTask();
-      if (!currentTask) return of(void 0);
-      if (isTaskCancelled(currentTask)) {
-        showCancelledInfo(currentTask);
-        return of(void 0);
-      }
-
-      const retryCount = (currentTask.retries ?? 0) + 1;
-      if (retryCount <= 2) {
-        this.updateTask({
-          ...currentTask,
-          retries: retryCount,
-          state: TaskStatus.PENDING
-        });
-        this.alerts.info(
-          `Reintentando ${currentTask.title}`,
-          `Intento ${retryCount}/3`,
-          currentTask.id
-        );
-      } else {
-        this.updateTask({ ...currentTask, state: TaskStatus.FAILED });
-        this.alerts.error(`Falló ${currentTask.title}`, `Sin más reintentos`, currentTask.id);
-      }
-      return of(void 0);
-    }),
-
-    finalize(() => {
-      clearTimeout(blockTimerId);
-      this.activeTasks.delete(taskId);
-      // Forzar reevaluación para que el Scheduler reciba cambios
-      Promise.resolve().then(() => this.tasks$.next([...this.tasks$.value]));
-    }),
-
-    map(() => void 0)
-  );
-}
+  private dependenciesMet(task: Task, all: Task[]): boolean {
+    if (!task.dependencies?.length) return true;
+    const byId = new Map(all.map(x => [x.id, x] as const));
+    return task.dependencies.every(dep => (byId.get(dep.id)?.state) === TaskStatus.COMPLETED);
+  }
 
   private checkBlockTaskByDurationTimer(task: Task): ReturnType<typeof setTimeout>{
     const maxTime = task.duration * 2;
     return setTimeout(() => {
-      const cur = this.getById(task.id);
-      if (cur?.state === TaskStatus.IN_PROGRESS) {
-        this.updateTask({ ...cur, state: TaskStatus.BLOCKED });
-        this.alerts.warn(`Tarea ${cur.title} bloqueada`, `Excedió ${maxTime}ms`, cur.id);
+      const currentTask = this.getCurrentTask(task.id);
+      if (currentTask?.state === TaskStatus.IN_PROGRESS) {
+        this.updateTask({ ...currentTask, state: TaskStatus.BLOCKED });
+        this.alerts.warn(`Tarea ${currentTask.title} bloqueada`, `Excedió ${maxTime}ms`, currentTask.id);
       }
     },  maxTime);
   }
 
+  private getCurrentTask(taskId: string): Task | undefined {
+    return this.getById(taskId);
+  }
+
   private getById(id: string): Task | undefined {
     return this.tasks$.value.find(t => t.id === id);
+  }
+
+  private isTaskCancelled(task: Task): boolean {
+    return task.state === TaskStatus.CANCELLED;
+  }
+
+  private showCancelledInfo(task: Task): void {
+    this.alerts.info(`Tarea ${task.title} cancelada`, undefined, task.id);
   }
 
 

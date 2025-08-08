@@ -1,0 +1,13 @@
+
+<p-card header="Gestión de Tareas">
+
+    <nl-task-controls />
+    <nl-task-list 
+        [tasks]="tasks" 
+        (onCancelTask)="cancelTask($event)"
+        (onRetryTask)="retryTask($event)"
+        (onUpdateCreateAt)="updateCreateAt($event)"
+    />
+</p-card>
+
+<p-toast position="bottom-right"></p-toast>

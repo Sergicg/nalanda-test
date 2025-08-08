@@ -1,0 +1,171 @@
+[
+  {
+    "id": "t1",
+    "title": "Compilar código",
+    "completed": false,
+    "dependencies": [],
+    "priority": 1,
+    "duration": 1500,
+    "startAt": "2025-08-08T08:00:00.000Z",
+    "state": "pending",
+    "retries": 0
+  },
+  {
+    "id": "t2",
+    "title": "Ejecutar tests unitarios",
+    "completed": false,
+    "dependencies": [
+      {
+        "id": "t1",
+        "title": "Compilar código",
+        "completed": false,
+        "dependencies": [],
+        "priority": 1,
+        "duration": 1500,
+        "startAt": "2025-08-08T08:00:00.000Z",
+        "state": "pending",
+        "retries": 0
+      }
+    ],
+    "priority": 1,
+    "duration": 2000,
+    "startAt": "2025-08-08T08:05:00.000Z",
+    "state": "pending",
+    "retries": 0
+  },
+  {
+    "id": "t3",
+    "title": "Despliegue a entorno de staging",
+    "completed": false,
+    "dependencies": [
+      {
+        "id": "t2",
+        "title": "Ejecutar tests unitarios",
+        "completed": false,
+        "dependencies": [
+          {
+            "id": "t1",
+            "title": "Compilar código",
+            "completed": false,
+            "dependencies": [],
+            "priority": 1,
+            "duration": 1500,
+            "startAt": "2025-08-08T08:00:00.000Z",
+            "state": "pending",
+            "retries": 0
+          }
+        ],
+        "priority": 1,
+        "duration": 2000,
+        "startAt": "2025-08-08T08:05:00.000Z",
+        "state": "pending",
+        "retries": 0
+      }
+    ],
+    "priority": 2,
+    "duration": 3000,
+    "startAt": "2025-08-08T08:15:00.000Z",
+    "state": "pending",
+    "retries": 0
+  },
+  {
+    "id": "t4",
+    "title": "Analizar métricas de rendimiento",
+    "completed": false,
+    "dependencies": [],
+    "priority": 3,
+    "duration": 2500,
+    "startAt": "2025-08-08T07:55:00.000Z",
+    "state": "in-progress",
+    "retries": 1
+  },
+  {
+    "id": "t5",
+    "title": "Publicar documentación",
+    "completed": true,
+    "dependencies": [],
+    "priority": 2,
+    "duration": 1800,
+    "startAt": "2025-08-08T07:50:00.000Z",
+    "state": "pending",
+    "retries": 0
+  },
+  {
+    "id": "t6",
+    "title": "Revisar logs de errores",
+    "completed": false,
+    "dependencies": [],
+    "priority": 1,
+    "duration": 2200,
+    "startAt": "2025-08-08T07:40:00.000Z",
+    "state": "failed",
+    "retries": 2
+  },
+  {
+    "id": "t7",
+    "title": "Optimizar consultas a base de datos",
+    "completed": false,
+    "dependencies": [],
+    "priority": 2,
+    "duration": 4000,
+    "startAt": "2025-08-08T07:30:00.000Z",
+    "state": "blocked",
+    "retries": 2
+  },
+  {
+    "id": "t8",
+    "title": "Limpieza de recursos temporales",
+    "completed": false,
+    "dependencies": [],
+    "priority": 3,
+    "duration": 1200,
+    "startAt": "2025-08-08T07:20:00.000Z",
+    "state": "cancelled",
+    "retries": 0
+  },
+  {
+    "id": "t9",
+    "title": "Generar reporte de seguridad",
+    "completed": false,
+    "dependencies": [],
+    "priority": 1,
+    "duration": 2600,
+    "startAt": "2025-08-08T09:00:00.000Z",
+    "state": "pending",
+    "retries": 0
+  },
+  {
+    "id": "t10",
+    "title": "Backup de base de datos",
+    "completed": false,
+    "dependencies": [
+      {
+        "id": "t5",
+        "title": "Publicar documentación",
+        "completed": true,
+        "dependencies": [],
+        "priority": 2,
+        "duration": 1800,
+        "startAt": "2025-08-08T07:50:00.000Z",
+        "state": "pending",
+        "retries": 0
+      },
+      {
+        "id": "t6",
+        "title": "Revisar logs de errores",
+        "completed": false,
+        "dependencies": [],
+        "priority": 1,
+        "duration": 2200,
+        "startAt": "2025-08-08T07:40:00.000Z",
+        "state": "failed",
+        "retries": 2
+      }
+    ],
+    "priority": 2,
+    "duration": 5000,
+    "startAt": "2025-08-08T09:15:00.000Z",
+    "state": "pending",
+    "retries": 0
+  }
+]

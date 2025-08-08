@@ -1,0 +1,23 @@
+            <p-table [value]="task.dependencies" dataKey="id">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>Id</th>
+                  <th>Nombre</th>
+                  <th>Fecha de Inicio</th>
+                  <th>Duración</th>
+                  <th>Prioridad</th>
+                  <th>Estado</th>
+                </tr>
+              </ng-template>
+
+              <ng-template #body let-dependency>
+                <tr>
+                  <td>{{ dependency.id }}</td>
+                  <td>{{ dependency.title }}</td>
+                  <td>{{ dependency.startAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>{{ dependency.duration }} ms</td>
+                  <td>{{ dependency.priority }}</td>
+                  <td>{{ dependency.state }}</td>
+                </tr>
+              </ng-template>
+            </p-table>

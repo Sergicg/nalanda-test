@@ -1,0 +1,59 @@
+<!-- task-controls.component.html -->
+<div class="p-fluid p-formgrid p-grid">
+  <div class="p-field p-col-12 p-md-4">
+    <input
+      [(ngModel)]="taskName"
+      type="text"
+      pInputText
+      placeholder="Nombre tarea"
+    />
+  </div>
+
+  <div class="p-field p-col-6 p-md-2">
+    <input
+      pInputText
+      type="number"
+      placeholder="Duración (ms)"
+      [(ngModel)]="taskDuration"
+      min="1"
+    />
+  </div>
+
+  <div class="p-field p-col-6 p-md-3">
+    <p-datepicker [(ngModel)]="taskStartAtDate" dateFormat="dd.mm.yy" />
+  </div>
+
+  <div class="p-field p-col-6 p-md-2">
+    <p-dropdown
+      [options]="priorityOptions"
+      [(ngModel)]="taskPriority"
+      placeholder="Prioridad"
+      optionLabel="label"
+      optionValue="value"
+    ></p-dropdown>
+  </div>
+
+  <div class="p-field p-col-12">
+    <p-multiSelect
+      [options]="taskOptions"
+      [(ngModel)]="selectedDeps"
+      defaultLabel="Dependencias (opcional)"
+      optionLabel="title"
+      optionValue="id"
+      [filter]="true"
+      [showToggleAll]="false"
+      [display]="'chip'"
+    ></p-multiSelect>
+
+
+  </div>
+
+  <div class="p-field p-col-12 p-md-1">
+    <p-button
+      label="Crear tarea"
+      icon="pi pi-plus"
+      (onClick)="addTask()"
+      [disabled]="!isValid()"
+    ></p-button>
+  </div>
+</div>

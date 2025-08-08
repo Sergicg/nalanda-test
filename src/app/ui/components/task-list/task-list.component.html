@@ -1,0 +1,115 @@
+<p-table [value]="tasks()" 
+          [paginator]="true" 
+          dataKey="id"
+          [rows]="10" 
+          [expandedRowKeys]="expandedRows"
+          [responsiveLayout]="'scroll'" 
+          [styleClass]="'task-table'">
+      <ng-template pTemplate="header">
+        <tr>
+          <th></th>
+          <th>Id</th>
+          <th>Nombre</th>
+          <th>Fecha de Inicio</th>
+          <th>Tiene dependencias</th>
+          <th>Duración</th>
+          <th>Prioridad</th>
+          <th>Estado</th>
+          <th>Reintentos</th>
+          <th>Acciones</th>
+        </tr>
+      </ng-template>
+
+    <ng-template #body let-task let-expanded="expanded">
+        <tr>
+          @if (task.dependencies.length > 0) {
+            <td>
+                <p-button 
+                  type="button" 
+                  pRipple 
+                  [pRowToggler]="task" 
+                  [text]="true" 
+                  [rounded]="true" 
+                  [plain]="true" 
+                  [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" 
+                />          
+            </td>
+          } @else {
+            <td></td>
+          }          
+          <td>{{ task.id }}</td>
+          <td>{{ task.title }}</td>
+          <td>{{ task.startAt | date: 'dd/MM/yyyy' }}</td>
+          <td>{{task.dependencies.length}}{{ task.dependencies.length > 0 ? 'Sí' : 'No' }}</td>
+          <td>{{ task.duration }} ms</td>
+          <td>{{ task.priority }}</td>
+          <td>{{ task.state }}</td>
+          <td>{{ task.retries }}</td>
+          <td>
+            @if(task.state === 'pending') {
+              <p-button               
+                icon="pi pi-check" 
+                label="Cancelar" 
+                severity="danger"
+                (click)="cancelTask(task.id)" />
+
+              <p-button               
+                icon="pi pi-check" 
+                label="Modificar la fecha de inicio" 
+                severity="info"
+                (click)="op.toggle($event)"  />
+                <p-popover #op>
+                  <div>
+                    <label for="startAt">Fecha de Inicio:</label>
+                    <p-date-picker 
+                      id="startAt" 
+                      [(ngModel)]="task.startAt" 
+                      [showTime]="false" 
+                      [showIcon]="true"
+                      dateFormat="dd.mm.yy"  
+                      [placeholder]="'Selecciona una fecha y hora'" />
+                    <p-button label="Actualizar" (click)="updateCreateAt(task.id)" />
+                  </div>
+                </p-popover>
+            }
+
+            @if(task.state === 'failed') {
+              <p-button               
+                icon="pi pi-refresh" 
+                label="Reintentar" 
+                (click)="retryTask(task.id)" />
+            }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template #expandedrow let-task>
+        <tr>
+          <td colspan="10">
+            <p-table [value]="task.dependencies" dataKey="id">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>Id</th>
+                  <th>Nombre</th>
+                  <th>Fecha de Inicio</th>
+                  <th>Duración</th>
+                  <th>Prioridad</th>
+                  <th>Estado</th>
+                </tr>
+              </ng-template>
+
+              <ng-template #body let-dependency>
+                <tr>
+                  <td>{{ dependency.id }}</td>
+                  <td>{{ dependency.title }}</td>
+                  <td>{{ dependency.startAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>{{ dependency.duration }} ms</td>
+                  <td>{{ dependency.priority }}</td>
+                  <td>{{ dependency.state }}</td>
+                </tr>
+              </ng-template>
+            </p-table>
+            
+          </td>
+        </tr>
+      </ng-template>
+</p-table>

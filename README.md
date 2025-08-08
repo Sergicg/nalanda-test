@@ -1,27 +1,69 @@
-# NalandaTest
+Este proyecto implementa un **sistema de gestión y ejecución de tareas técnicas** con:
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.1.1.
+- Prioridades
+- Dependencias
+- Concurrencia controlada
+- Reintentos automáticos
+- Detección de bloqueos
+- Alertas del sistema
+- UI en tiempo real con Angular + PrimeNG
+- Motor reactivo usando RxJS
 
-## Development server
+Stack
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+- **Angular** 15+
+- **PrimeNG** 18 (UI)
+- **RxJS** para flujos reactivos y control de ejecución
+- **Karma + Jasmine** para testing
+- **TypeScript** para tipado estricto
 
-## Code scaffolding
+Estructura del proyecto
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+Se sigue el patrón smart/dumb components.
 
-## Build
+src/
+  domain/ -> Definiciones de tipos y enums
+  services/
+    alerts/ -> Servicio centralizado de alertas
+    api/ -> Api de ejemplo para obtener tareas iniciales
+    task-engine/ -> Core de ejecucuón de las tareas
+    task-scheduler/ -> Planificador de ejecución
+  ui/
+    components/ -> Directorio de componentes tontos
+        task-controls/ -> Controles para crear una nueva tarea
+        task-list/ -> Listado de las tareas
+    containers/ -> Directorio de componentes listos
+        dashboard/ -> Pagina principal donde se recuperan datos, con UI
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+Funcionalidades
 
-## Running unit tests
+    Motor de Tareas (TaskEngine)
+        A través de BehaviorSubject mantiene un estado reactivo de las tareas
+        Ejecuta las tareas según las condiciones especificadas
+        El éxito es aleatorio, alrededor del 70%
+        Los fallos son aleatorios
+        Se bloque si la duración es el doble de la duración estimada
+        Genera alertas
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+    Planificador
+        Observa el estado de las tareas
+        Cuando hay huevo ejecuta las taraes que pueden ejecutarse
+        Order por prioridad y respeta el startAt
 
-## Running end-to-end tests
+    Servicio de alertas
+        Expone stream de alertas y se muestras en la UI usando p-toast de primeNg
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+    Ui
+        Carga las tareas
+        Arranca el sistema
+        Muestra la lista y los controles para hacer las acciones epecificadas
+        Muestra las alertas
 
-## Further help
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Testing
+    Para ejecutar "ng-test"
+    Tests unitarios con Karma + Jasmine.
+
+    Cobertura de:
+        Motor (task-engine.service.spec.ts).
+        Planificador (task-scheduler.service.spec.ts).    

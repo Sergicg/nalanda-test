@@ -1,16 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, input, output, ViewChild, viewChild, ViewChildren } from '@angular/core';
-import { Task } from '@domain';
+import { Component, input, output, ViewChild} from '@angular/core';
+import { Task, TaskStatus } from '@domain';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { Popover, PopoverModule } from 'primeng/popover';
 import { FormsModule } from '@angular/forms';
 import { DatePickerModule } from 'primeng/datepicker';
+import { TagModule } from 'primeng/tag';
 
 @Component({
   selector: 'nl-task-list',
   standalone: true,
-  imports: [CommonModule, DatePickerModule, FormsModule, ButtonModule, TableModule, PopoverModule],
+  imports: [CommonModule, DatePickerModule, FormsModule, ButtonModule, TagModule, TableModule, PopoverModule],
   templateUrl: './task-list.component.html',
   styleUrl: './task-list.component.css'
 })
@@ -47,4 +48,23 @@ export class TaskListComponent {
     this.onUpdateCreateAt.emit(task);
     this.popover.hide();
   }
+
+  getSeverity(status: TaskStatus) {
+    switch (status) {
+        case TaskStatus.PENDING:
+            return 'info';
+        case TaskStatus.CANCELLED:
+            return 'danger';
+        case TaskStatus.FAILED:
+            return 'danger';
+        case TaskStatus.COMPLETED:
+            return 'success';
+        case TaskStatus.IN_PROGRESS:
+            return 'warn';
+        case TaskStatus.BLOCKED: 
+            return 'contrast';            
+        default:
+            return 'secondary';
+    }
+}
 }

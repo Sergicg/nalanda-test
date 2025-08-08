@@ -43,7 +43,9 @@
           <td>{{task.dependencies.length}}{{ task.dependencies.length > 0 ? 'Sí' : 'No' }}</td>
           <td>{{ task.duration }} ms</td>
           <td>{{ task.priority }}</td>
-          <td>{{ task.state }}</td>
+          <td>
+            <p-tag [value]="task.state" [severity]="getSeverity(task.state)" />
+          </td>
           <td>{{ task.retries }}</td>
           <td>
             @if(task.state === 'pending') {
@@ -104,7 +106,10 @@
                   <td>{{ dependency.startAt | date: 'dd/MM/yyyy' }}</td>
                   <td>{{ dependency.duration }} ms</td>
                   <td>{{ dependency.priority }}</td>
-                  <td>{{ dependency.state }}</td>
+                  <td>
+                    <p-tag [value]="dependency.state" [severity]="getSeverity(dependency.state)" />
+                   
+                  </td>
                 </tr>
               </ng-template>
             </p-table>

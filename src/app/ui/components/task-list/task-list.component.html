@@ -40,7 +40,7 @@
           <td>{{ task.id }}</td>
           <td>{{ task.title }}</td>
           <td>{{ task.startAt | date: 'dd/MM/yyyy' }}</td>
-          <td>{{task.dependencies.length}}{{ task.dependencies.length > 0 ? 'Sí' : 'No' }}</td>
+          <td>{{ task.dependencies.length > 0 ? 'Sí' : 'No' }}</td>
           <td>{{ task.duration }} ms</td>
           <td>{{ task.priority }}</td>
           <td>

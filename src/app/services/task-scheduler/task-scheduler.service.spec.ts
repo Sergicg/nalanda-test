@@ -1,16 +1,11 @@
-// src/app/services/task-scheduler.service.spec.ts
 import { TestBed } from '@angular/core/testing';
 import { Subject, of } from 'rxjs';
 import { TaskSchedulerService } from './task-scheduler.service';
 import { TaskEngineService } from '../task-engine/task-engine.service';
 import { Task, TaskStatus } from '@domain';
 
-// ---------- Mock del Engine ----------
-class TaskEngineServiceMock {
-  // getTasks() emitirá desde aquí
+class TaskEngineServiceMock {  
   tasks$ = new Subject<Task[]>();
-
-  // spies
   hasCapacity = jasmine.createSpy('hasCapacity').and.returnValue(true);
   tryExecute = jasmine.createSpy('tryExecute').and.callFake((id: string) => of(void 0));
 
@@ -18,8 +13,6 @@ class TaskEngineServiceMock {
     return this.tasks$.asObservable();
   }
 }
-
-// ---------- Utilidades ----------
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: Math.random().toString(36).slice(2),
   title: 'Tarea',

@@ -1,4 +1,3 @@
-// src/app/services/alerts.service.ts
 import { Injectable } from '@angular/core';
 import { AlertEvent } from '@domain';
 import { Subject, BehaviorSubject } from 'rxjs';

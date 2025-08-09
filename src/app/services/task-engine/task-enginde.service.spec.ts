@@ -1,10 +1,8 @@
-// src/app/services/task-engine.service.spec.ts
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { TaskEngineService } from './task-engine.service';
 import { AlertsService } from '../alerts/alerts.service';
-import { Task, TaskStatus } from '@domain'; // <-- ajusta si no tienes alias
+import { Task, TaskStatus } from '@domain';
 
-// --- Mock sencillo de AlertsService (PrimeNG Toasts los verás via spies) ---
 class AlertsServiceMock {
   success = jasmine.createSpy('success');
   info    = jasmine.createSpy('info');
@@ -12,15 +10,14 @@ class AlertsServiceMock {
   error   = jasmine.createSpy('error');
 }
 
-// Utilidad para crear tareas rápidas (startAt puede ser undefined)
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
   id: Math.random().toString(36).slice(2),
   title: 'Tarea',
   completed: false,
   dependencies: [],
   priority: 2,
-  duration: 50,              // ms, rápido en tests
-  startAt: new Date(),       // o undefined si quieres probar el caso
+  duration: 50,              
+  startAt: new Date(),       
   state: TaskStatus.PENDING,
   retries: 0,
   ...overrides,
@@ -42,8 +39,7 @@ describe('TaskEngineService (Karma/Jasmine)', () => {
     alerts  = TestBed.inject(AlertsService) as any;
   });
 
-  afterEach(() => {
-    // Limpia spies sobre Math.random si los usaste
+  afterEach(() => {    
     const anyRandom = Math.random as any;
     if (anyRandom.and?.originalFn) anyRandom.and.callThrough();
   });
@@ -70,8 +66,8 @@ describe('TaskEngineService (Karma/Jasmine)', () => {
     tick(0);
 
     service.tryExecute(t.id).subscribe();
-    tick(20); // termina el timer de ejecución
-    tick(0);  // procesa finalize/emit
+    tick(20);
+    tick(0);
 
     let final!: Task | undefined;
     const sub = service.getTasks().subscribe(list => final = list.find(x => x.id === t.id));
@@ -84,7 +80,7 @@ describe('TaskEngineService (Karma/Jasmine)', () => {
   }));
 
   it('tryExecute (fallo): queda PENDING con retries=1 y emite alerta de reintento', fakeAsync(() => {
-    spyOn(Math, 'random').and.returnValue(1.0); // fuerza fallo
+    spyOn(Math, 'random').and.returnValue(1.0);
 
     const t = makeTask({ title: 'KO', duration: 20 });
     service.addTask(t);
@@ -121,8 +117,7 @@ describe('TaskEngineService (Karma/Jasmine)', () => {
     const sub = service.getTasks().subscribe(list => final = list.find(x => x.id === t.id)!);
     tick(0);
 
-    expect(final.state).toBe(TaskStatus.CANCELLED);
-    // OJO: si cambiaste a alerts.info en cancel, ajusta este expect:
+    expect(final.state).toBe(TaskStatus.CANCELLED);    
     expect(alerts.error).toHaveBeenCalledWith(`Falló ${t.title}`, `Sin más reintentos`, t.id);
 
     sub.unsubscribe();

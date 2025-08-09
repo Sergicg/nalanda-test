@@ -1,4 +1,3 @@
-// src/app/pages/dashboard/dashboard.component.ts
 import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Task } from '@domain';
 import { TaskEngineService } from '../../../services/task-engine/task-engine.service';

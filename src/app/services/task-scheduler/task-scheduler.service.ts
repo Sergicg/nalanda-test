@@ -1,4 +1,3 @@
-// src/app/services/task-scheduler.service.ts
 import { Injectable, OnDestroy } from '@angular/core';
 import { TaskEngineService } from '../task-engine/task-engine.service';
 import { Task, TaskStatus } from '@domain';
@@ -50,9 +49,8 @@ export class TaskSchedulerService implements OnDestroy {
 
     // Llenar huecos mientras haya capacidad y elegibles
     for (const t of eligible) {
-      if (!this.engine.hasCapacity()) break;
-      // disparamos ejecución; no necesitamos suscribirnos aquí
-      this.engine.tryExecute(t.id).subscribe(); // fire-and-forget
+      if (!this.engine.hasCapacity()) break;      
+      this.engine.tryExecute(t.id).subscribe();
     }
   }
 

@@ -1,4 +1,3 @@
-// src/app/services/task-engine.service.ts
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of, timer, throwError, EMPTY, asapScheduler } from 'rxjs';
 import { catchError, finalize, map, mergeMap, observeOn, tap } from 'rxjs/operators';
@@ -11,8 +10,7 @@ export class TaskEngineService {
   private alerts = inject(AlertsService);
 
   private tasks$ = new BehaviorSubject<Task[]>([]);
-
-  // Control de ejecución
+  
   private activeTasks = new Set<string>();
   private readonly maxConcurrency = 3;  
 
@@ -164,12 +162,10 @@ export class TaskEngineService {
         }
         return of(void 0);
       }),
-
-      // Liberar recursos y notificar cambios al terminar SIEMPRE
+      
       finalize(() => {
         clearTimeout(blockTimerId);
-        this.activeTasks.delete(taskId);
-        // Re-emitimos el array (misma referencia clonada) para disparar evaluaciones y UI
+        this.activeTasks.delete(taskId);        
         this.emitTasks([...this.tasks$.value]);
       }),
 
@@ -178,9 +174,7 @@ export class TaskEngineService {
   }
 
   private checkSubtaskCompletion(task: Task): void {  
-    const allTasksWidthDependencies = this.tasks$.value.filter(currentTask => currentTask.dependencies.length > 0);
-    const byId = new Map(allTasksWidthDependencies.map(t => [t.id, t] as const));
-
+    const allTasksWidthDependencies = this.tasks$.value.filter(currentTask => currentTask.dependencies.length > 0);    
     allTasksWidthDependencies.forEach(parentTask => {
       parentTask.dependencies.forEach(dep => {
         if (dep.id === task.id) {

@@ -39,6 +39,18 @@ export class TaskEngineService {
     this.tasks$.next(copy);
   }
 
+  updateSubTask(parentTask: Task, updatedTask: Task): void {
+    const list = this.tasks$.value;
+    const i = list.findIndex(t => t.id === parentTask.id);
+    if (i === -1) return;
+    const copy = [...list];
+    copy[i] = {
+      ...copy[i],
+      dependencies: copy[i].dependencies?.map(d => d.id === updatedTask.id ? { ...updatedTask } : d) ?? []
+    };
+    this.tasks$.next(copy);    
+  }
+
   cancelTask(taskId: string): void {
     const currentTask = this.getById(taskId);
     if (!currentTask) return;
@@ -94,7 +106,7 @@ export class TaskEngineService {
     this.activeTasks.add(taskId);
     this.updateTask({ ...initialTask!, state: TaskStatus.IN_PROGRESS });
 
-    // Watchdog de bloqueo: si supera 2×duration -> BLOCKED + alerta
+    // Watch de bloqueo: si supera 2×duration -> BLOCKED + alerta
     const blockTimerId = this.checkBlockTaskByDurationTimer(initialTask!);
 
     // Simulación de ejecución real
@@ -122,6 +134,9 @@ export class TaskEngineService {
           return;
         }
         this.updateTask({ ...currentTask, state: TaskStatus.COMPLETED, completed: true });
+
+        this.checkSubtaskCompletion(currentTask);
+
         this.alerts.success(`Completada ${currentTask.title}`, undefined, currentTask.id);
       }),
 
@@ -160,6 +175,21 @@ export class TaskEngineService {
 
       map(() => void 0)
     );
+  }
+
+  private checkSubtaskCompletion(task: Task): void {  
+    const allTasksWidthDependencies = this.tasks$.value.filter(currentTask => currentTask.dependencies.length > 0);
+    const byId = new Map(allTasksWidthDependencies.map(t => [t.id, t] as const));
+
+    allTasksWidthDependencies.forEach(parentTask => {
+      parentTask.dependencies.forEach(dep => {
+        if (dep.id === task.id) {
+          this.updateSubTask({...parentTask}, { ...dep, state: TaskStatus.COMPLETED });
+          this.alerts.success(`Subtarea ${dep.title} completada`, undefined, dep.id);
+          return;
+        }
+      });      
+    });
   }
   
   private emitTasks(next: Task[]) {

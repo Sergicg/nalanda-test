@@ -45,127 +45,127 @@ describe('TaskEngineService (Karma/Jasmine)', () => {
   });
 
   it('getTasks expone el estado y refleja addTask', fakeAsync(() => {
-    let snapshot: Task[] = [];
-    const sub = service.getTasks().subscribe(v => snapshot = v);
+    let listTask: Task[] = [];
+    const subscription = service.getTasks().subscribe(tasks => listTask = tasks);
 
-    const t = makeTask({ title: 'A' });
-    service.addTask(t);
+    const task = makeTask({ title: 'A' });
+    service.addTask(task);
     tick(0);
 
-    expect(snapshot.length).toBe(1);
-    expect(snapshot[0].title).toBe('A');
+    expect(listTask.length).toBe(1);
+    expect(listTask[0].title).toBe('A');
 
-    sub.unsubscribe();
+    subscription.unsubscribe();
   }));
 
-  it('tryExecute (éxito): pasa a COMPLETED y emite alerta success', fakeAsync(() => {
+  it('Éxito de tarea, pasa a COMPLETED y emite alerta success', fakeAsync(() => {
     spyOn(Math, 'random').and.returnValue(0.0); // fuerza éxito
 
-    const t = makeTask({ title: 'OK', duration: 20 });
-    service.addTask(t);
+    const task = makeTask({ title: 'OK', duration: 20 });
+    service.addTask(task);
     tick(0);
 
-    service.tryExecute(t.id).subscribe();
+    service.tryExecute(task.id).subscribe();
     tick(20);
     tick(0);
 
-    let final!: Task | undefined;
-    const sub = service.getTasks().subscribe(list => final = list.find(x => x.id === t.id));
+    let taskCompleted!: Task | undefined;
+    const subscription = service.getTasks().subscribe(listTask => taskCompleted = listTask.find(t => t.id === task.id));
     tick(0);
 
-    expect(final!.state).toBe(TaskStatus.COMPLETED);
-    expect(alerts.success).toHaveBeenCalledWith(`Completada ${t.title}`, undefined, t.id);
+    expect(taskCompleted!.state).toBe(TaskStatus.COMPLETED);
+    expect(alerts.success).toHaveBeenCalledWith(`Completada ${task.title}`, undefined, task.id);
 
-    sub.unsubscribe();
+    subscription.unsubscribe();
   }));
 
-  it('tryExecute (fallo): queda PENDING con retries=1 y emite alerta de reintento', fakeAsync(() => {
+  it('Fallo de la tarea, queda PENDING con retries=1 y emite alerta de reintento', fakeAsync(() => {
     spyOn(Math, 'random').and.returnValue(1.0);
 
-    const t = makeTask({ title: 'KO', duration: 20 });
-    service.addTask(t);
+    const task = makeTask({ title: 'KO', duration: 20 });
+    service.addTask(task);
     tick(0);
 
-    service.tryExecute(t.id).subscribe();
+    service.tryExecute(task.id).subscribe();
     tick(20);
     tick(0);
 
-    let final!: Task;
-    const sub = service.getTasks().subscribe(list => final = list.find(x => x.id === t.id)!);
+    let taskToRetryFinal!: Task;
+    const subscription = service.getTasks().subscribe(list => taskToRetryFinal = list.find(t => t.id === task.id)!);
     tick(0);
 
-    expect(final.state).toBe(TaskStatus.PENDING);
-    expect(final.retries).toBe(1);
+    expect(taskToRetryFinal.state).toBe(TaskStatus.PENDING);
+    expect(taskToRetryFinal.retries).toBe(1);
     expect(alerts.info).toHaveBeenCalledWith(
-      `Reintentando ${t.title}`,
+      `Reintentando ${task.title}`,
       `Intento 1/3`,
-      t.id
+      task.id
     );
 
-    sub.unsubscribe();
+    subscription.unsubscribe();
   }));
 
-  it('cancelTask: pasa a CANCELLED y emite alerta (según tu código actual usa error)', fakeAsync(() => {
-    const t = makeTask({ title: 'Cancellable' });
-    service.addTask(t);
+  it('Canelación de la tarea: pasa a CANCELLED y emite alerta (según tu código actual usa error)', fakeAsync(() => {
+    const task = makeTask({ title: 'Cancellable' });
+    service.addTask(task);
     tick(0);
 
-    service.cancelTask(t.id);
+    service.cancelTask(task.id);
     tick(0);
 
-    let final!: Task;
-    const sub = service.getTasks().subscribe(list => final = list.find(x => x.id === t.id)!);
+    let taskCanceled!: Task;
+    const subscription = service.getTasks().subscribe(list => taskCanceled = list.find(t => t.id === task.id)!);
     tick(0);
 
-    expect(final.state).toBe(TaskStatus.CANCELLED);    
-    expect(alerts.error).toHaveBeenCalledWith(`Falló ${t.title}`, `Sin más reintentos`, t.id);
+    expect(taskCanceled.state).toBe(TaskStatus.CANCELLED);
+    expect(alerts.error).toHaveBeenCalledWith(`Falló ${task.title}`, `Sin más reintentos`, task.id);
 
-    sub.unsubscribe();
+    subscription.unsubscribe();
   }));
 
-  it('deleteTask: elimina y limpia dependencias en otras tareas', fakeAsync(() => {
-    const root  = makeTask({ title: 'Root' });
-    const child = makeTask({ title: 'Child', dependencies: [root] });
+  it('Eliminación de la tarea: elimina y limpia dependencias en otras tareas', fakeAsync(() => {
+    const taskRoot  = makeTask({ title: 'Root' });
+    const child = makeTask({ title: 'Child', dependencies: [taskRoot] });
 
-    service.addTask(root);
+    service.addTask(taskRoot);
     service.addTask(child);
     tick(0);
 
-    service.deleteTask(root.id);
+    service.deleteTask(taskRoot.id);
     tick(0);
 
     let list: Task[] = [];
     const sub = service.getTasks().subscribe(v => list = v);
     tick(0);
 
-    expect(list.find(t => t.id === root.id)).toBeUndefined();
+    expect(list.find(t => t.id === taskRoot.id)).toBeUndefined();
     const childAfter = list.find(t => t.id === child.id)!;
-    expect(childAfter.dependencies.find(d => d.id === root.id)).toBeUndefined();
+    expect(childAfter.dependencies.find(d => d.id === taskRoot.id)).toBeUndefined();
 
     sub.unsubscribe();
   }));
 
-  it('retryTask: sobre FAILED pasa a PENDING con retries=1 y alerta info', fakeAsync(() => {
-    const t = makeTask({ title: 'RetryMe', state: TaskStatus.FAILED, retries: 0 });
-    service.addTask(t);
+  it('Reintentar: sobre FAILED pasa a PENDING con retries=1 y alerta info', fakeAsync(() => {
+    const task = makeTask({ title: 'RetryMe', state: TaskStatus.FAILED, retries: 0 });
+    service.addTask(task);
     tick(0);
 
-    service.retryTask(t.id);
+    service.retryTask(task.id);
     tick(0);
 
     let after!: Task;
-    const sub = service.getTasks().subscribe(list => after = list.find(x => x.id === t.id)!);
+    const subscription = service.getTasks().subscribe(list => after = list.find(t => t.id === task.id)!);
     tick(0);
 
     expect(after.state).toBe(TaskStatus.PENDING);
     expect(after.retries).toBe(1);
     expect(alerts.info).toHaveBeenCalledWith(
-      `Reintentando ${t.title}`,
+      `Reintentando ${task.title}`,
       `Intento 1/3`,
-      t.id
+      task.id
     );
 
-    sub.unsubscribe();
+    subscription.unsubscribe();
   }));
 
   it('alerta sistema: demasiadas P1 pendientes (>=5) lanza warn', fakeAsync(() => {
@@ -183,7 +183,7 @@ describe('TaskEngineService (Karma/Jasmine)', () => {
   }));
 
   it('alerta sistema: "Sistema inactivo" si no hay IN_PROGRESS ni PENDING listas', fakeAsync(() => {
-    (service as any).emitTasks([]); // sin tareas
+    (service as any).emitTasks([]);
     tick(0);
 
     expect(alerts.info).toHaveBeenCalledWith('Sistema inactivo');

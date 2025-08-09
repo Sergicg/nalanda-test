@@ -30,8 +30,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private alerts = inject(AlertsService);
 
   protected tasks: Task[] = [];
-  // protected alerts: string[] = [];
-
+  private readonly ALERT_LIFETIME = 2000; // ms
   ngOnInit(): void {
 
     this.taskApiService.getAll()
@@ -39,12 +38,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
         map(tasks => tasks.map(task => this.engine.addTask(task))))      
       .subscribe();
-
-    // Arranca el scheduler (el engine lo usa internamente)
+    
     this.scheduler.start();
 
-    this.engine.getTasks().pipe(takeUntil(this.destroy$))
-      .subscribe(ts => this.tasks = ts);
+    this.engine.getTasks()
+      .pipe(
+        takeUntil(this.destroy$)
+      ).subscribe(tasks => this.tasks = tasks);
 
     this.alerts.asStream()
       .pipe(takeUntil(this.destroy$))
@@ -53,7 +53,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           severity: a.severity,
           summary: a.summary,
           detail: a.detail,
-          life: 2000,
+          life: this.ALERT_LIFETIME,
         });
       });      
   }

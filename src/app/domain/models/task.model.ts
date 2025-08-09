@@ -5,16 +5,9 @@ export type Task = {
     title: string;    
     completed: boolean;    
     dependencies: Task[];    
-    priority: TaskPriority
+    priority: number
     duration: number;
     startAt: Date | undefined;
     state: TaskStatus;
     retries: number;
 }
-
-export type TaskPriority = 
-    | 1
-    | 2
-    | 3
-    | 4
-    | 5;

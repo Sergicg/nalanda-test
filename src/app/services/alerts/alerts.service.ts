@@ -8,23 +8,22 @@ export class AlertsService {
   private stream$ = new Subject<AlertEvent>();
   private history$ = new BehaviorSubject<AlertEvent[]>([]);
 
-  private lastKey = '';
-  private dedupeMs = 500; // evita spam de eventos iguales muy seguidos
+  private lastAlertKey = '';
+  private readonly AVOID_DUPLICATES_MS = 500; // evita spam de eventos iguales muy seguidos
 
   asStream() { return this.stream$.asObservable(); }
   asHistory() { return this.history$.asObservable(); }
 
-  emit(a: Omit<AlertEvent, 'ts'>, dedupe = true) {
-    const evt: AlertEvent = { ...a, ts: Date.now() };
-    if (dedupe) {
-      const key = `${evt.severity}|${evt.summary}|${evt.detail ?? ''}`;
-      if (key === this.lastKey && this.history$.value.at(-1)?.ts && evt.ts - this.history$.value.at(-1)!.ts < this.dedupeMs) {
-        return;
-      }
-      this.lastKey = key;
+  emit(alertData: Omit<AlertEvent, 'ts'>, avoidDuplicates = true) {
+    const newAlert = this.createAlertWithTimestamp(alertData);
+
+    if (avoidDuplicates) {
+      const alertKey = this.createAlertKey(newAlert);
+      if (this.isDuplicateAlert(newAlert, alertKey)) return;
+      this.lastAlertKey = alertKey;
     }
-    this.stream$.next(evt);
-    this.history$.next([...this.history$.value, evt]);
+    this.stream$.next(newAlert);
+    this.history$.next([...this.history$.value, newAlert]);
   }
 
   success(summary: string, detail?: string, taskId?: string) { this.emit({ severity: 'success', summary, detail, taskId }); }
@@ -33,4 +32,32 @@ export class AlertsService {
   error(summary: string, detail?: string, taskId?: string)   { this.emit({ severity: 'error',   summary, detail, taskId }); }
 
   clearHistory() { this.history$.next([]); }
+
+  private createAlertWithTimestamp(alertData: Omit<AlertEvent, 'ts'>): AlertEvent {
+    return { ...alertData, ts: Date.now() };
+  }
+
+  private createAlertKey(alert: AlertEvent): string {
+    return `${alert.severity}|${alert.summary}|${alert.detail ?? ''}`;
+  }
+
+  private isDuplicateAlert(newAlert: AlertEvent, alertKey: string): boolean {
+    return this.isSameAsLastAlert(alertKey) && this.isRecentDuplicate(newAlert.ts);
+  }
+
+  private isSameAsLastAlert(alertKey: string): boolean {
+    return alertKey === this.lastAlertKey;
+  }
+
+  private isRecentDuplicate(newAlertTimestamp: number): boolean {
+    const lastAlert = this.getLastAlert();
+    if (!lastAlert) return false;
+    return newAlertTimestamp - lastAlert.ts < this.AVOID_DUPLICATES_MS;
+  }
+
+  private getLastAlert(): AlertEvent | undefined {
+    const listAlertHistory = this.history$.value;
+    return listAlertHistory.length > 0 ? listAlertHistory[listAlertHistory.length - 1] : undefined;
+  }
+
 }

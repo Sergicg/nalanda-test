@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, input, output, ViewChild} from '@angular/core';
-import { Task, TaskStatus } from '@domain';
+import { AlertType, Task, TaskStatus } from '@domain';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { Popover, PopoverModule } from 'primeng/popover';
@@ -25,14 +25,14 @@ export class TaskListComponent {
 
   protected expandedRows: { [key: string]: boolean } = {};
 
-  expandAll() {            
+  expandAll(): void {
     this.expandedRows = this.tasks().reduce((acc, p) => {
       acc[p.id] = true;
       return acc;
     }, {} as Record<string, boolean>);
   }
 
-  collapseAll() {
+  collapseAll(): void {
     this.expandedRows = {};
   }
 
@@ -49,7 +49,7 @@ export class TaskListComponent {
     this.popover.hide();
   }
 
-  getSeverity(status: TaskStatus) {
+  getSeverity(status: TaskStatus): AlertType {
     switch (status) {
         case TaskStatus.PENDING:
             return 'info';

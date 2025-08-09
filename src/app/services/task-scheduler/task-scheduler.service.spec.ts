@@ -51,24 +51,24 @@ describe('TaskSchedulerService', () => {
   it('start(): se suscribe a getTasks() y planifica elegibles', () => {
     scheduler.start();
 
-    const t1 = makeTask({ title: 'A' });
-    const t2 = makeTask({ title: 'B' });
+    const task1 = makeTask({ title: 'A' });
+    const task2 = makeTask({ title: 'B' });
 
-    engine.tasks$.next([t1, t2]);
+    engine.tasks$.next([task1, task2]);
 
     expect(engine.hasCapacity).toHaveBeenCalled();
     // Debe intentar ejecutar ambos, porque ambos son elegibles
     expect(engine.tryExecute).toHaveBeenCalledTimes(2);
-    expect(engine.tryExecute).toHaveBeenCalledWith(t1.id);
-    expect(engine.tryExecute).toHaveBeenCalledWith(t2.id);
+    expect(engine.tryExecute).toHaveBeenCalledWith(task1.id);
+    expect(engine.tryExecute).toHaveBeenCalledWith(task2.id);
   });
 
   it('no duplica suscripciones si llamo a start() dos veces', () => {
     scheduler.start();
     scheduler.start(); // segunda llamada no debe duplicar
 
-    const t = makeTask({ title: 'SoloUnaVez' });
-    engine.tasks$.next([t]);
+    const task = makeTask({ title: 'SoloUnaVez' });
+    engine.tasks$.next([task]);
 
     expect(engine.tryExecute).toHaveBeenCalledTimes(1);
   });
@@ -80,15 +80,15 @@ describe('TaskSchedulerService', () => {
     let calls = 0;
     engine.hasCapacity.and.callFake(() => ++calls === 1);
 
-    const a = makeTask({ title: 'A', priority: 1 });
-    const b = makeTask({ title: 'B', priority: 1 });
-    const c = makeTask({ title: 'C', priority: 1 });
+    const taskA = makeTask({ title: 'A', priority: 1 });
+    const taskB = makeTask({ title: 'B', priority: 1 });
+    const taskC = makeTask({ title: 'C', priority: 1 });
 
-    engine.tasks$.next([a, b, c]);
+    engine.tasks$.next([taskA, taskB, taskC]);
 
     // Solo la primera pasa; al perder capacidad, el bucle se corta
     expect(engine.tryExecute).toHaveBeenCalledTimes(1);
-    expect(engine.tryExecute).toHaveBeenCalledWith(a.id); // por prioridad y orden
+    expect(engine.tryExecute).toHaveBeenCalledWith(taskA.id); // por prioridad y orden
   });
 
   it('ordena por prioridad ascendente antes de planificar', () => {
@@ -97,38 +97,38 @@ describe('TaskSchedulerService', () => {
     // Capacidad ilimitada para la prueba
     engine.hasCapacity.and.returnValue(true);
 
-    const low  = makeTask({ title: 'Low',  priority: 5 });
-    const mid  = makeTask({ title: 'Mid',  priority: 3 });
-    const high = makeTask({ title: 'High', priority: 1 });
+    const taskLow  = makeTask({ title: 'Low',  priority: 5 });
+    const taskMid  = makeTask({ title: 'Mid',  priority: 3 });
+    const taskHigh = makeTask({ title: 'High', priority: 1 });
 
-    engine.tasks$.next([low, high, mid]);
+    engine.tasks$.next([taskLow, taskHigh, taskMid]);
 
     // Debe llamar en orden: High -> Mid -> Low
     expect(engine.tryExecute.calls.count()).toBe(3);
-    expect(engine.tryExecute.calls.argsFor(0)[0]).toBe(high.id);
-    expect(engine.tryExecute.calls.argsFor(1)[0]).toBe(mid.id);
-    expect(engine.tryExecute.calls.argsFor(2)[0]).toBe(low.id);
+    expect(engine.tryExecute.calls.argsFor(0)[0]).toBe(taskHigh.id);
+    expect(engine.tryExecute.calls.argsFor(1)[0]).toBe(taskMid.id);
+    expect(engine.tryExecute.calls.argsFor(2)[0]).toBe(taskLow.id);
   });
 
   it('respeta dependencias: ejecuta B solo cuando A está COMPLETED', () => {
     scheduler.start();
 
-    const A = makeTask({ title: 'A (root)' });
-    const B = makeTask({ title: 'B (dep A)', dependencies: [A] });
+    const taskA = makeTask({ title: 'A (root)' });
+    const taskB = makeTask({ title: 'B (dep A)', dependencies: [taskA] });
 
     // Emisión 1: A pending, B pending -> solo A es elegible
-    engine.tasks$.next([A, B]);
+    engine.tasks$.next([taskA, taskB]);
     expect(engine.tryExecute).toHaveBeenCalledTimes(1);
-    expect(engine.tryExecute).toHaveBeenCalledWith(A.id);
+    expect(engine.tryExecute).toHaveBeenCalledWith(taskA.id);
 
     engine.tryExecute.calls.reset();
 
     // Emisión 2: A completed, B pending -> ahora B elegible
-    const Adone = { ...A, state: TaskStatus.COMPLETED };
-    engine.tasks$.next([Adone, B]);
+    const taskACompleted = { ...taskA, state: TaskStatus.COMPLETED };
+    engine.tasks$.next([taskACompleted, taskB]);
 
     expect(engine.tryExecute).toHaveBeenCalledTimes(1);
-    expect(engine.tryExecute).toHaveBeenCalledWith(B.id);
+    expect(engine.tryExecute).toHaveBeenCalledWith(taskB.id);
   });
 
   it('respeta startAt: no ejecuta tareas con startAt en el futuro', () => {
@@ -137,28 +137,28 @@ describe('TaskSchedulerService', () => {
     const future = new Date(Date.now() + 60_000);
     const past   = new Date(Date.now() - 60_000);
 
-    const Tfuture = makeTask({ title: 'Futuro', startAt: future });
-    const Tpast   = makeTask({ title: 'Pasado', startAt: past });
+    const taskFuture = makeTask({ title: 'Futuro', startAt: future });
+    const taskPast   = makeTask({ title: 'Pasado', startAt: past });
 
-    engine.tasks$.next([Tfuture, Tpast]);
+    engine.tasks$.next([taskFuture, taskPast]);
 
     // Solo debe ejecutar la de "Pasado"
     expect(engine.tryExecute).toHaveBeenCalledTimes(1);
-    expect(engine.tryExecute).toHaveBeenCalledWith(Tpast.id);
+    expect(engine.tryExecute).toHaveBeenCalledWith(taskPast.id);
   });
 
   it('stop(): deja de planificar en siguientes emisiones', () => {
     scheduler.start();
 
-    const t1 = makeTask({ title: 'Antes de stop' });
-    engine.tasks$.next([t1]);
+    const task1 = makeTask({ title: 'Antes de stop' });
+    engine.tasks$.next([task1]);
     expect(engine.tryExecute).toHaveBeenCalledTimes(1);
 
     engine.tryExecute.calls.reset();
     scheduler.stop();
 
-    const t2 = makeTask({ title: 'Después de stop' });
-    engine.tasks$.next([t2]);
+    const task2 = makeTask({ title: 'Después de stop' });
+    engine.tasks$.next([task2]);
 
     expect(engine.tryExecute).not.toHaveBeenCalled();
   });
